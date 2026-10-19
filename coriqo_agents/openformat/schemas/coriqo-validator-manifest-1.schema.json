@@ -1,0 +1,47 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://coriqo.com/specs/coriqo-validator-manifest-1.schema.json",
+  "title": "Coriqo third-party validator manifest, format version 1",
+  "description": "How a validator written outside Coriqo describes itself. This document is a claim by its author, not a verified fact: nothing here is checked against the code except by the conformance suite the author is expected to run and a reviewer is expected to re-run. Version 1 carries no signature field on purpose — see the spec's 'Left out of version 1' section.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["format", "format_version", "validator_id", "version", "author", "entry_point"],
+  "properties": {
+    "format": {"const": "coriqo-validator-manifest"},
+    "format_version": {"const": "1"},
+    "validator_id": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9_]*$",
+      "maxLength": 64,
+      "description": "The id this validator writes into every result it produces. Must not collide with a validator id Coriqo ships."
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$",
+      "description": "Semantic version of this validator's logic, independent of any protocol it runs under."
+    },
+    "author": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name"],
+      "properties": {
+        "name": {"type": "string", "minLength": 1},
+        "contact": {"type": "string"},
+        "url": {"type": "string"}
+      },
+      "description": "Who wrote it. Carried through to the assurance package so a bank reading a result can see it did not come from Coriqo."
+    },
+    "entry_point": {
+      "type": "string",
+      "pattern": "^[A-Za-z_][A-Za-z0-9_.]*:[A-Za-z_][A-Za-z0-9_]*$",
+      "description": "Import path of the Validator subclass, as `module.path:ClassName`."
+    },
+    "controls": {
+      "type": "array",
+      "items": {"type": "string"},
+      "description": "Control ids the author claims this validator exercises. A claim, not an assertion Coriqo makes: whether the evidence supports the control is decided by the control's own pass logic on the server, not by this list."
+    },
+    "description": {"type": "string"},
+    "license": {"type": "string", "description": "SPDX identifier."}
+  }
+}

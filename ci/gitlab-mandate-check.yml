@@ -1,0 +1,39 @@
+# LK-3: no mandate, no deploy. Runs `coriqo-agents mandate check` and fails
+# the job when Coriqo says the agent may not go live yet: it is suspended, has
+# no written mandate, no named person has approved the mandate, or the mandate
+# file in this repository differs from the one Coriqo holds.
+#
+# Copy this job into your `.gitlab-ci.yml` ahead of the deploy job and add it
+# to the deploy job's `needs:`. Set CORIQO_API_KEY as a protected, masked
+# CI/CD variable (a service account key with the model:read role). The CLI
+# reads CORIQO_BASE_URL, CORIQO_TENANT_SLUG and CORIQO_API_KEY from the
+# environment, so the key is never on the command line.
+#
+# Set CORIQO_AGENT_ID. Set CORIQO_MANDATE_FILE to check the repo's mandate text
+# against Coriqo's. Set CORIQO_ALLOW_UNAPPROVED to "true" to skip the approval
+# requirement (the mandate must still exist).
+#
+# CORIQO_ALLOW_UNAPPROVED drops the approval requirement, so treat it like the
+# key: set it in this file's `variables:` block or as a protected variable, and
+# in the project's CI/CD settings limit who can override variables when running
+# a pipeline by hand. Anyone who can set it to "true" can turn the gate off.
+#
+# Exit codes: 0 allowed, 1 blocked (the log says why and links to the agent),
+# 2 could not ask (wrong settings, no network). A job that cannot ask fails
+# too, so an outage never lets an unchecked agent ship.
+coriqo-mandate-check:
+  stage: test
+  image: python:3.11-slim
+  before_script:
+    - pip install coriqo-agents
+  script:
+    - |
+      # Each value stays one argument. Do not build an argument string and
+      # expand it unquoted: a variable holding "x --allow-unapproved" would
+      # then switch off the approval requirement. `--flag=value` also keeps a
+      # value that starts with "-" from being read as a flag. This form works
+      # in sh as well as bash.
+      set -- mandate check "--agent-id=$CORIQO_AGENT_ID"
+      if [ -n "$CORIQO_MANDATE_FILE" ]; then set -- "$@" "--mandate-file=$CORIQO_MANDATE_FILE"; fi
+      if [ "$CORIQO_ALLOW_UNAPPROVED" = "true" ]; then set -- "$@" --allow-unapproved; fi
+      coriqo-agents "$@"

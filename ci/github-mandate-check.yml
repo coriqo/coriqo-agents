@@ -1,0 +1,69 @@
+# LK-3: no mandate, no deploy. Runs `coriqo-agents mandate check` and fails
+# the job when Coriqo says the agent may not go live yet: it is suspended, has
+# no written mandate, no named person has approved the mandate, or the mandate
+# file in this repository differs from the one Coriqo holds.
+#
+# Copy this job into your release workflow ahead of the deploy step, and make
+# the deploy job `needs:` it. Set the secret CORIQO_API_KEY (a service account
+# key with the model:read role). It reaches the CLI as an environment
+# variable; the CLI never prints it.
+#
+# Exit codes: 0 allowed, 1 blocked (the log says why and links to the agent),
+# 2 could not ask (wrong settings, no network). A job that cannot ask fails
+# too, so an outage never lets an unchecked agent ship.
+name: coriqo-mandate-check
+
+on:
+  workflow_call:
+    inputs:
+      agent-id:
+        required: true
+        type: string
+      base-url:
+        required: true
+        type: string
+      tenant:
+        required: true
+        type: string
+      mandate-file:
+        description: Path to the mandate text in this repository. Leave empty to skip the match check.
+        required: false
+        type: string
+        default: ""
+      allow-unapproved:
+        description: Do not require a named person's approval (the mandate must still exist).
+        required: false
+        type: boolean
+        default: false
+    secrets:
+      CORIQO_API_KEY:
+        required: true
+
+jobs:
+  coriqo-mandate-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install coriqo-agents
+        run: pip install coriqo-agents
+
+      - name: Check the agent's mandate
+        # Every input reaches the shell through `env:`, never as an inline
+        # `${{ }}` inside `run:`: GitHub substitutes `${{ }}` into the script
+        # text before bash sees it, so a value with a quote or `;` in it would
+        # run as its own command in a job that holds CORIQO_API_KEY. Read
+        # "$VAR" instead. Don't simplify this back to inline `${{ }}`.
+        env:
+          CORIQO_API_KEY: ${{ secrets.CORIQO_API_KEY }}
+          CORIQO_BASE_URL: ${{ inputs.base-url }}
+          CORIQO_TENANT_SLUG: ${{ inputs.tenant }}
+          AGENT_ID: ${{ inputs.agent-id }}
+          MANDATE_FILE: ${{ inputs.mandate-file }}
+          ALLOW_UNAPPROVED: ${{ inputs.allow-unapproved }}
+        run: |
+          # `--flag=value` keeps a value that starts with "-" from being read as a flag.
+          args=(mandate check "--agent-id=$AGENT_ID")
+          if [ -n "$MANDATE_FILE" ]; then args+=("--mandate-file=$MANDATE_FILE"); fi
+          if [ "$ALLOW_UNAPPROVED" = "true" ]; then args+=(--allow-unapproved); fi
+          coriqo-agents "${args[@]}"

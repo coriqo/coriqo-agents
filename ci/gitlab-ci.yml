@@ -1,0 +1,40 @@
+# Thin GitLab CI wrapper around `coriqo-agents runner ci`.
+#
+# Copy this job into your own `.gitlab-ci.yml` (or `include:` it). Set
+# CORIQO_API_KEY and CORIQO_DEVICE_KEY as protected, masked CI/CD variables
+# — the job reads them as environment variables and never prints them (see
+# sdk/coriqo-agents/tests/test_ci_no_secrets.py for the check this repo
+# runs on that claim). CORIQO_CAMPAIGN_ID, CORIQO_AGENT_VERSION,
+# CORIQO_BASE_URL and CORIQO_TENANT are ordinary (non-secret) variables —
+# set them per project or per environment as your pipeline needs.
+coriqo-assurance-gate:
+  stage: test
+  image: python:3.11-slim
+  variables:
+    CORIQO_BUNDLE_PATH: coriqo-bundle.json
+    CORIQO_TRACE_PATH: coriqo-trace.json
+    CORIQO_FAIL_ON: "regressed,ineffective"
+  before_script:
+    - pip install 'coriqo-agents[runner]'
+    - echo "$CORIQO_DEVICE_KEY" > "${CI_PROJECT_DIR}/coriqo-device.pem"
+  script:
+    - |
+      FAIL_ON_ARGS=""
+      IFS=',' read -ra CONDITIONS <<< "$CORIQO_FAIL_ON"
+      for c in "${CONDITIONS[@]}"; do FAIL_ON_ARGS="$FAIL_ON_ARGS --fail-on $c"; done
+      coriqo-agents runner ci \
+        --campaign "$CORIQO_CAMPAIGN_ID" \
+        --agent-version "$CORIQO_AGENT_VERSION" \
+        --bundle "$CORIQO_BUNDLE_PATH" \
+        --trace "$CORIQO_TRACE_PATH" \
+        --base-url "$CORIQO_BASE_URL" \
+        --tenant "$CORIQO_TENANT" \
+        --api-key "$CORIQO_API_KEY" \
+        --device-key "${CI_PROJECT_DIR}/coriqo-device.pem" \
+        --pipeline-id "$CI_PIPELINE_ID" \
+        --junit coriqo-assurance-results.xml \
+        $FAIL_ON_ARGS
+  artifacts:
+    when: always
+    reports:
+      junit: coriqo-assurance-results.xml

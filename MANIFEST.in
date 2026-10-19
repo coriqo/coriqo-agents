@@ -1,0 +1,5 @@
+# The source package ships the library only. Some tests import Coriqo's
+# server and only run inside the main repository.
+prune tests
+prune examples
+prune ci

@@ -1,0 +1,7 @@
+coriqo-agents
+Copyright Coriqo
+
+coriqo_agents/_seal_verifier.py is copied from seal-verifier/verify_proof.py in
+the Coriqo repository, which is licensed under the Apache License, Version 2.0
+(see seal-verifier/LICENSE, http://www.apache.org/licenses/LICENSE-2.0).
+The copied functions are unmodified; only the module docstring and imports differ.

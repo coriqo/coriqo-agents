@@ -1,0 +1,87 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://coriqo.com/specs/coriqo-benchmark-corpus-1.schema.json",
+  "title": "Coriqo agent assurance benchmark corpus, format version 1",
+  "description": "A corpus of recorded agent traces with the outcome each validator is expected to return for each one. Consumers MUST reject a document whose `format` or `format_version` they do not recognise rather than reading it on a best-effort basis.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["format", "format_version", "corpus_id", "corpus_version", "cases"],
+  "properties": {
+    "format": {
+      "const": "coriqo-benchmark-corpus"
+    },
+    "format_version": {
+      "const": "1",
+      "description": "Frozen. A change that removes or reinterprets any field below is a new format_version, never an edit to this one."
+    },
+    "corpus_id": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Stable identity of the corpus across its versions."
+    },
+    "corpus_version": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Version of this corpus's contents. Coriqo's own corpus versions by year and revision (\"2026.1\")."
+    },
+    "description": {
+      "type": "string"
+    },
+    "cases": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["case_id", "domain", "description", "trace", "expected"],
+        "properties": {
+          "case_id": {
+            "type": "string",
+            "pattern": "^[a-z0-9][a-z0-9_-]*$",
+            "description": "Unique within the corpus."
+          },
+          "domain": {
+            "type": "string",
+            "enum": ["loan_servicing", "payments_ops", "kyc_review", "collections"],
+            "description": "The banking process the trace is shaped after. Closed set in version 1: a corpus that needs a fifth domain needs a new format_version, because a consumer grouping scores by domain cannot be handed a value it has no bucket for."
+          },
+          "description": {
+            "type": "string",
+            "minLength": 1,
+            "description": "What the agent was doing and what the case is testing, in plain sentences."
+          },
+          "trace": {
+            "type": "object",
+            "required": ["trace_id", "agent_id", "events"],
+            "properties": {
+              "trace_id": {"type": "string"},
+              "agent_id": {"type": "string"},
+              "agent_version": {"type": "string"},
+              "events": {"type": "array", "items": {"type": "object"}}
+            },
+            "description": "An agent execution trace. Event shape is the one the Coriqo validation SDK reads (coriqo_agents.runner.trace); additional properties are allowed because the event model is additive and a corpus may carry events a given validator does not read."
+          },
+          "configuration": {
+            "type": "object",
+            "description": "Passed through to `ValidatorContext.configuration` for this case. Several validators are inconclusive without it — tool authorization has no roster to compare a call against unless the case supplies `authorized_tools` — so it is part of the case, not of the harness: a corpus that carried only traces would score those validators as unevaluated forever.",
+            "additionalProperties": true
+          },
+          "expected": {
+            "type": "object",
+            "minProperties": 1,
+            "description": "validator_id -> the status that validator is expected to return for this trace. Only validators listed here are scored for this case; a validator absent from the map is not evaluated against it and contributes nothing to the score.",
+            "additionalProperties": {
+              "type": "string",
+              "enum": ["PASS", "FAIL", "WARNING", "NOT_APPLICABLE"],
+              "description": "ERROR and INCONCLUSIVE are deliberately not labellable. They say the harness could not reach a verdict, which is never a property of the trace and so is never something a corpus can expect."
+            }
+          },
+          "notes": {
+            "type": "string",
+            "description": "Free text for the corpus author. Carries no meaning to a scorer."
+          }
+        }
+      }
+    }
+  }
+}

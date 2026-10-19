@@ -1,0 +1,92 @@
+[project]
+name = "coriqo-agents"
+version = "0.1.0"
+description = "Client for reporting AI agent decisions to Coriqo's agent-monitoring API"
+requires-python = ">=3.10"
+authors = [{ name = "Abdulrafiu Rabiu" }]
+license = { text = "Apache-2.0" }
+dependencies = [
+    "httpx>=0.24",
+]
+
+[project.optional-dependencies]
+langchain = ["langchain-core>=0.3"]
+# CoriqoTracingProcessor (coriqo_agents.openai_agents). Verified on 0.24.0;
+# the tracing processor interface has been stable since the 0.0.x releases.
+openai-agents = ["openai-agents>=0.2"]
+test = ["pytest>=7"]
+# The customer-side assurance runner (coriqo_agents.runner) needs Ed25519
+# signing for its execution manifest. Kept as its own extra, not a base
+# dependency: the runner ships with zero LLM dependencies, and the base coriqo-agents install (the API client, used by
+# every agent regardless of whether it ever runs assurance protocols) should
+# stay exactly as thin as it is today.
+runner = ["cryptography>=41"]
+# Offline receipt verification (coriqo_agents.receipts). rfc3161ng is only
+# needed to read a TSA token; without it that check reports not_checked.
+receipts = ["cryptography>=41", "rfc3161ng>=2.1"]
+# The PyRIT engine adapter (coriqo_agents.runner.engines.pyrit). Its own
+# extra, never a base or `runner` dependency: PyRIT pulls an LLM client stack
+# with it, and the rule that the runner installs with zero LLM
+# dependencies has to hold for every customer who never runs this engine.
+# `>=1.1,<2` pins the major: PyRIT 1.0 renamed its orchestrators to attack
+# strategies and moved them under `pyrit.executor.attack`, so the adapter's
+# imports do not exist on 0.x and the next major could move them again.
+pyrit = ["pyrit>=1.1,<2"]
+# The Garak engine adapter (coriqo_agents.runner.engines.garak). No
+# Python dependency of its own: garak is a customer-installed CLI
+# (`pip install garak`) the adapter only shells out to, the same shape
+# `promptfoo` (a Node binary) already has — kept as an empty extra rather
+# than omitted, so `pip install coriqo-agents[garak]` is a documented,
+# stable no-op instead of an error, and a future dependency (should one ever
+# be needed) has somewhere to go without customers needing to know that in
+# advance.
+garak = []
+# The Inspect (UK AISI) engine adapter (coriqo_agents.runner.engines.
+# inspect). Its own extra, never a base or `runner` dependency, for the same
+# reason `pyrit` above is one: inspect-ai is a full evaluation library,
+# not something every customer who never runs this engine should have to
+# install. `0.3.x` moves fast (weekly-to-monthly point releases) with no
+# documented stability guarantee across minors yet, so the floor is pinned
+# to the release this adapter's `eval()`/`EvalLog` usage was read off rather
+# than left open-ended.
+inspect = ["inspect-ai>=0.3.200,<0.4"]
+# Optional protobuf decoding for `coriqo_agents.runner.
+# otel_ingest.otlp_proto_bytes_to_traces`. JSON stays the default and the
+# only wire format the base/`runner` install can read (see otel_ingest.py's
+# module docstring for why): `opentelemetry-proto` pulls in `protobuf`,
+# and neither belongs in the zero-LLM-deps runner base that every customer
+# gets regardless of whether their collector speaks protobuf. A customer
+# who only ever configures `OTEL_EXPORTER_OTLP_TRACES_PROTOCOL=http/json`
+# never needs this extra at all.
+otel-proto = ["opentelemetry-proto>=1.20"]
+# JSON Schema validation for the benchmark corpus/result formats, the
+# third-party validator manifest, and the offline assurance-package
+# verifier. Its own extra rather than a base dependency for the same
+# reason as the rest: a customer running `coriqo-agents runner run` never
+# validates a spec document. Where the extra is absent, the affected check
+# reports UNEVALUATED and the verdict cannot be `verified`. It is never
+# skipped silently.
+spec = ["jsonschema>=4"]
+
+[project.scripts]
+coriqo-agents = "coriqo_agents.cli:main"
+# The offline reference verifier. Its own console script rather than a
+# `coriqo-agents` subcommand: the audience is a bank's examiner checking a
+# package Coriqo handed them, who has no reason to learn this SDK's runner
+# vocabulary to run one command.
+verify-assurance-package = "coriqo_agents.openformat.cli:main"
+
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["coriqo_agents*"]
+
+# The published JSON Schemas ARE the format definition (see
+# coriqo_agents/openformat/formats.py) — `formats.py` reads its vocabularies
+# back out of them at import time, so an install without these files does
+# not merely lose schema validation, it fails to import. They must ship in
+# the wheel.
+[tool.setuptools.package-data]
+coriqo_agents = ["openformat/schemas/*.json"]

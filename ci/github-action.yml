@@ -1,0 +1,102 @@
+# Thin GitHub Actions wrapper around `coriqo-agents runner ci`.
+#
+# Copy this job into your own workflow (or reuse it with `workflow_call`)
+# and set the secrets it reads: CORIQO_API_KEY (a service account key) and
+# CORIQO_DEVICE_KEY (the PEM key issued when this CI host was enrolled as a
+# runner device). Neither is echoed anywhere in this file — they reach the
+# CLI as environment variables, and the CLI never prints them (see
+# sdk/coriqo-agents/tests/test_ci_no_secrets.py).
+#
+# The bundle and trace paths below assume your pipeline already produces
+# them earlier in the job (compile the protocol bundle once and check it
+# in, or fetch it fresh; export your agent's OTel trace to
+# coriqo-trace.json). This file does neither — it only runs the gate.
+name: coriqo-assurance-gate
+
+on:
+  workflow_call:
+    inputs:
+      campaign-id:
+        required: true
+        type: string
+      agent-version:
+        required: true
+        type: string
+      base-url:
+        required: true
+        type: string
+      tenant:
+        required: true
+        type: string
+      bundle-path:
+        required: false
+        type: string
+        default: coriqo-bundle.json
+      trace-path:
+        required: false
+        type: string
+        default: coriqo-trace.json
+      fail-on:
+        required: false
+        type: string
+        default: "regressed,ineffective"
+    secrets:
+      CORIQO_API_KEY:
+        required: true
+      CORIQO_DEVICE_KEY:
+        required: true
+
+jobs:
+  coriqo-gate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Install coriqo-agents
+        run: pip install 'coriqo-agents[runner]'
+
+      - name: Write device key
+        run: printf '%s' "$CORIQO_DEVICE_KEY" > "$RUNNER_TEMP/coriqo-device.pem"
+        env:
+          CORIQO_DEVICE_KEY: ${{ secrets.CORIQO_DEVICE_KEY }}
+
+      - name: Run the Coriqo assurance gate
+        # Every input reaches the shell through `env:`, never as an inline
+        # `${{ }}` inside `run:`. GitHub substitutes `${{ }}` into the raw
+        # script text before bash ever sees it, so an input value with a
+        # quote or a `;` in it would break out of the argument it sits in
+        # and run as its own command (template injection) — in a job that
+        # holds CORIQO_API_KEY and the device signing key. Routing through
+        # `env:` and reading `"$VAR"` keeps the value as shell DATA. Don't
+        # simplify this back to inline `${{ }}`.
+        env:
+          CORIQO_API_KEY: ${{ secrets.CORIQO_API_KEY }}
+          CAMPAIGN_ID: ${{ inputs.campaign-id }}
+          AGENT_VERSION: ${{ inputs.agent-version }}
+          BUNDLE_PATH: ${{ inputs.bundle-path }}
+          TRACE_PATH: ${{ inputs.trace-path }}
+          BASE_URL: ${{ inputs.base-url }}
+          TENANT: ${{ inputs.tenant }}
+          FAIL_ON: ${{ inputs.fail-on }}
+          PIPELINE_ID: ${{ github.run_id }}
+        run: |
+          FAIL_ON_ARGS=""
+          IFS=',' read -ra CONDITIONS <<< "$FAIL_ON"
+          for c in "${CONDITIONS[@]}"; do FAIL_ON_ARGS="$FAIL_ON_ARGS --fail-on $c"; done
+          coriqo-agents runner ci \
+            --campaign "$CAMPAIGN_ID" \
+            --agent-version "$AGENT_VERSION" \
+            --bundle "$BUNDLE_PATH" \
+            --trace "$TRACE_PATH" \
+            --base-url "$BASE_URL" \
+            --tenant "$TENANT" \
+            --api-key "$CORIQO_API_KEY" \
+            --device-key "$RUNNER_TEMP/coriqo-device.pem" \
+            --pipeline-id "$PIPELINE_ID" \
+            --junit coriqo-assurance-results.xml \
+            $FAIL_ON_ARGS
+
+      - name: Publish assurance results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coriqo-assurance-results
+          path: coriqo-assurance-results.xml

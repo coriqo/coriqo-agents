@@ -1,0 +1,263 @@
+{
+  "description": "The campaign assurance report: every v1.0\nfield plus additive campaign-scoped sections. Fields are optional and\nomitted from the payload when unpopulated, so a package with none of them set serializes to\nexactly the v1.0 shape and hashes the same way: v1.0 stays byte-\nidentical for executions without a campaign.\n\nNever a place a level, score, or determination gets decided: every\nvalue here is copied from a result the server already computed. No LLM decides a status.",
+  "properties": {
+    "ai_system": {
+      "additionalProperties": true,
+      "title": "Ai System",
+      "type": "object"
+    },
+    "assurance_determination": {
+      "anyOf": [
+        {
+          "additionalProperties": true,
+          "type": "object"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Assurance Determination"
+    },
+    "campaign": {
+      "anyOf": [
+        {
+          "additionalProperties": true,
+          "type": "object"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Campaign"
+    },
+    "chain": {
+      "anyOf": [
+        {
+          "additionalProperties": true,
+          "type": "object"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Chain"
+    },
+    "controls": {
+      "anyOf": [
+        {
+          "items": {
+            "additionalProperties": true,
+            "type": "object"
+          },
+          "type": "array"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Controls"
+    },
+    "decision": {
+      "additionalProperties": true,
+      "title": "Decision",
+      "type": "object"
+    },
+    "emergency_control": {
+      "anyOf": [
+        {
+          "additionalProperties": true,
+          "type": "object"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Emergency Control"
+    },
+    "evidence_manifest": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Evidence Manifest",
+      "type": "array"
+    },
+    "execution_id": {
+      "title": "Execution Id",
+      "type": "string"
+    },
+    "executive_summary": {
+      "title": "Executive Summary",
+      "type": "string"
+    },
+    "findings": {
+      "items": {
+        "additionalProperties": true,
+        "type": "object"
+      },
+      "title": "Findings",
+      "type": "array"
+    },
+    "genai_assurance": {
+      "anyOf": [
+        {
+          "additionalProperties": true,
+          "type": "object"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Genai Assurance"
+    },
+    "generated_at": {
+      "title": "Generated At",
+      "type": "string"
+    },
+    "model_assurance": {
+      "anyOf": [
+        {
+          "additionalProperties": true,
+          "type": "object"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Model Assurance"
+    },
+    "monitoring": {
+      "anyOf": [
+        {
+          "additionalProperties": true,
+          "type": "object"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Monitoring"
+    },
+    "protocol": {
+      "additionalProperties": true,
+      "title": "Protocol",
+      "type": "object"
+    },
+    "rag_assurance": {
+      "anyOf": [
+        {
+          "additionalProperties": true,
+          "type": "object"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Rag Assurance"
+    },
+    "raw_artifacts": {
+      "anyOf": [
+        {
+          "items": {
+            "additionalProperties": true,
+            "type": "object"
+          },
+          "type": "array"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Raw Artifacts"
+    },
+    "reach_map": {
+      "anyOf": [
+        {
+          "additionalProperties": true,
+          "type": "object"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Reach Map"
+    },
+    "retest": {
+      "anyOf": [
+        {
+          "items": {
+            "additionalProperties": true,
+            "type": "object"
+          },
+          "type": "array"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Retest"
+    },
+    "runner_attestation": {
+      "additionalProperties": true,
+      "title": "Runner Attestation",
+      "type": "object"
+    },
+    "schema_version": {
+      "default": "1.1",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "scope": {
+      "additionalProperties": true,
+      "title": "Scope",
+      "type": "object"
+    },
+    "security_assurance": {
+      "anyOf": [
+        {
+          "additionalProperties": true,
+          "type": "object"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Security Assurance"
+    },
+    "validators": {
+      "items": {
+        "additionalProperties": true,
+        "type": "object"
+      },
+      "title": "Validators",
+      "type": "array"
+    }
+  },
+  "required": [
+    "execution_id",
+    "generated_at",
+    "executive_summary",
+    "scope",
+    "ai_system",
+    "protocol",
+    "validators",
+    "findings",
+    "evidence_manifest",
+    "runner_attestation",
+    "decision"
+  ],
+  "title": "AssurancePackageV1_1",
+  "type": "object"
+}
